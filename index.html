@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Enduro - Atari 2600 - Remake</title>
+		<meta name="description" content="Remake do jogo Enduro, do Atari 2600. Feito em HTML5, com suporte a dispositivos móveis." />
+		<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0" />
+		<link rel="manifest" href="manifest.json">
+		
+		<meta name="twitter:card" content="summary">
+		<meta name="twitter:site" content="@fabiocardoso">
+		<meta name="twitter:title" content="Enduro - Atari 2600 - Remake">
+		<meta name="twitter:description" content="Remake do jogo Enduro, do Atari 2600. Feito em HTML5, com suporte a dispositivos móveis.">
+		<meta name="twitter:creator" content="@fabiocardoso">
+		<meta name="twitter:image" content="https://storage.googleapis.com/enduro/share.jpg">
+		<meta name="twitter:image:alt" content="Imagem pixelada do carro do Enduro do Atari 2600, acompanhado do texto Enduro - Video Game Remake">
+		
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://storage.googleapis.com/enduro/index.html" />
+		<meta property="og:title" content="Enduro - Atari 2600 - Remake" />
+		<meta property="og:description" content="Remake do jogo Enduro, do Atari 2600. Feito em HTML5, com suporte a dispositivos móveis." />
+		<meta property="og:image" content="https://storage.googleapis.com/enduro/share.jpg" />
+		<meta property="og:image:alt" content="Imagem pixelada do carro do Enduro do Atari 2600, acompanhado do texto Enduro - Video Game Remake" />
+		
+		<style>
+			*{
+				padding:0;
+				margin:0;
+				outline:none;
+				box-sizing:border-box;
+				font-family:sans-serif;
+			}
+			html,body{
+				height:100%;
+			}
+			body{
+				background:#000;
+				display:flex;
+				align-items:center;
+				justify-content:center;
+			}
+			#frame{
+				position:relative;
+				width:304px;
+				height:210px;
+				background:#fff;
+			}
+			canvas{
+				image-rendering:pixelated;
+				position:absolute;
+				top:0;
+				left:0;
+			}
+			#bg{
+				width:304px;
+				height:155px;
+				top:0px;
+			}
+			#mountain{
+				width:304px;
+				height:8px;
+				top:44px;
+			}
+			#game{
+				width:304px;
+				height:104px;
+				top:51px;
+			}
+			#score{
+				width:304px;
+				height:55px;
+				top:auto;
+				bottom:0;
+			}
+			#virtual-buttons{
+				display:none;
+			}
+			#fullscreen{
+				display:none;
+				position:absolute;
+				top:0;
+				left:0;
+				width:100%;
+				height:100%;
+				background:rgba(255,255,255,0.8);
+				align-items:center;
+				justify-content:center;
+				text-transform:uppercase;
+				font-weight:700;
+				display:none;
+			}
+			@media (max-width:1024px){
+				#fullscreen{
+					display:flex;
+				}
+				#virtual-buttons{
+					display:block;
+					position:absolute;
+					top:0;
+					left:0;
+					width:100%;
+					height:100%;
+				}
+				#vleft{
+					position:absolute;
+					bottom:0;
+					left:0;
+					padding:1vmax;
+					display:flex;
+				}
+				#vleft button{
+					margin-right:2vmax;
+				}
+				#vright{
+					position:absolute;
+					bottom:0;
+					right:0;
+					padding:1vmax;
+					display:flex;
+				}
+				#vright button{
+					margin-left:4vmax;
+				}
+				button{
+					width:13vmax;
+					height:13vmax;
+					border-radius:8vmax;
+					border:none;
+					text-align:center;
+					background:rgba(255,255,255,0.2);
+					border:2px solid rgba(255,255,255,0.1);
+				}
+				button img{
+					display:block;
+					width:70%;
+					height:70%;
+				}
+				#left img{
+					margin-left:1.2vmax;
+				}
+				#right img{
+					margin-left:2vmax;
+				}
+				#throttle img{
+					margin-left:1.4vmax;
+					margin-bottom:0.6vmax;
+				}
+				#brake{
+					width:8vmax;
+					height:8vmax;
+					margin-top:2vmax;
+				}
+				#brake img{
+					margin-left:1vmax;
+					margin-top:0.6vmax;
+				}
+			}
+			@media (orientation:portrait){
+				#vright{
+					flex-direction:column;
+				}
+				#vright button{
+					margin-left:0;
+					margin-top:5vmax;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div id="main">
+			<div id="frame">
+				<canvas id="bg" width="152" height="155"></canvas>
+				<canvas id="mountain" width="152" height="8"></canvas>
+				<canvas id="game" width="152" height="104"></canvas>
+				<canvas id="score" width="152" height="55"></canvas>
+			</div>
+		</div>
+		<div id="virtual-buttons">
+			<div id="vleft">
+				<button id="left"><img src="left.png" /></button>
+				<button id="right"><img src="right.png" /></button>
+			</div>
+			<div id="vright">
+				<button id="brake"><img src="down.png" /></button>
+				<button id="throttle"><img src="up.png" /></button>
+			</div>
+		</div>
+		<div id="fullscreen">
+			Toque para tela cheia!
+		</div>
+		<script>
+			
+			vibrationIntensity=10;
+			mobileEnableAudio=false;
+		
+			var key={
+				throttle:false,
+				brake:false,
+				left:false,
+				right:false
+			}
+			
+			//Resize
+			function __rsz(){
+				var __w=document.documentElement.clientWidth;
+				var __h=document.documentElement.clientHeight;
+				var __zw=__w/304;
+				var __zh=__h/210;
+				var __z=__zw<__zh ? __zw : __zh;
+				var __f=document.getElementById('frame');
+				__f.style.zoom=__z;
+			}
+			
+			__rsz();
+			window.addEventListener('resize',()=>{
+				__rsz();
+			});
+			
+			//Buttons
+			
+			var btn=document.querySelectorAll('button');
+			for (var i=0;i<btn.length;i++){
+				btn[i].addEventListener('touchstart',(e)=>{
+					let b=e.currentTarget;
+					key[b.id]=true;
+					window.navigator.vibrate(vibrationIntensity);
+				},false);
+				btn[i].addEventListener('touchend',(e)=>{
+					let b=e.currentTarget;
+					key[b.id]=false;
+				},false);
+				btn[i].addEventListener('click',(e)=>{
+					if(!mobileEnableAudio){
+						initSound();
+						mobileEnableAudio=true;
+					}
+				},false);
+			}
+			
+			
+			//Mouse controls
+			
+			document.addEventListener('contextmenu',(e)=>{
+				e.preventDefault();
+			},false);
+			
+			/* Controlar com o movimento do mouse, fica uma bosta.
+			document.onmousemove=(e)=>{
+				var w=document.documentElement.clientWidth;
+				var t=w/15;
+				var m=w/2;
+				var x=e.pageX;
+				if(x>m+t){
+					key.right=true;
+					key.left=false;
+				}else if(x<m-t){
+					key.left=true;
+					key.right=false;
+				}else{
+					key.left=false;
+					key.right=false;
+				}
+			}
+			*/
+			
+			document.onmousedown=(e)=>{
+				let btn=e.button;
+				if(btn==0){
+					key.throttle=true;
+				}else if(btn==2){
+					key.brake=true;
+				}
+			}
+			document.onmouseup=(e)=>{
+				let btn=e.button;
+				if(btn==0){
+					key.throttle=false;
+				}if(btn==2){
+					key.brake=false;
+				}
+			}
+			
+			
+			document.addEventListener('keydown',function(e){
+				var k=e.keyCode;
+				var s=e.shiftKey;
+				if(k==27){
+					window.location.reload();
+				}
+				if(k==49 && s){
+					useCollision=useCollision ? false : true;
+					console.log('Collision :'+useCollision);
+				}
+				if(k==50 && s){
+					enableAudio=enableAudio ? false : true;
+					console.log('Audio :'+enableAudio);
+				}
+			});
+			
+			//FS
+			
+			function toggleFullScreen(){
+				var doc=window.document;
+				var docEl=doc.documentElement;
+				var requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+				var cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+				if(!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement){
+					requestFullScreen.call(docEl);
+					
+				}else{
+					cancelFullScreen.call(doc);
+				}
+			}
+			document.getElementById('fullscreen').addEventListener('click',()=>{
+				initSound();
+				document.getElementById('fullscreen').style.display="none";
+				toggleFullScreen();
+			});
+			
+			document.addEventListener('webkitfullscreenchange',function(){
+				if(document.webkitIsFullScreen || document.fullscreen || document.mozFullScreen || document.msFullScreenElement){
+					document.getElementById('fullscreen').style.display="none";
+				}else{
+					document.getElementById('fullscreen').style.display="flex";
+				}
+			});
+			
+			wa1=(window.navigator.fullscreen==true);
+			wa2=(window.matchMedia('(display-mode: fullscreen)').matches);
+			
+			if(wa1 || wa2){
+				document.getElementById('fullscreen').style.display="none";
+			}
+			
+			
+		</script>
+		<script>
+		
+			
+		
+			enableAudio=true;
+			useCollision=true;
+			needXCarsToWin=200;
+			timePasses=1.5;
+		
+			//Variables
+			leftTrack=26;
+			rightTrack=126;
+			background=0;
+			
+			
+			
+			startSpeed=30;
+			enemyStartSpeed=startSpeed-40;
+			
+			throttle=0.7;
+			speedLimit=460;
+			carTurnSpeed=2;
+			enemySpace=17;
+			enemyFrequency=40;
+			startMountainPosition=30;
+			mountainDirection=0;
+			trackDirection=0;
+			trackCurve=76;
+			trackCurveSpeed=3;
+			trackPosition=0;
+			carPosition=76;
+			carHeight=0;
+			carGForce=0.2;
+			crashTime=2000;
+			carCrashSpeed=30;
+			maxCarCrashSpeed=500;
+			carCrashSpeedMovement=0.4;
+			tachometer=0;
+			carJump=4;
+			wallCollisionPenalty=20;
+			brakeFactor=10;
+			
+			//References
+			
+			started=false;
+			stage=1;
+			win=false;
+			crash=false;
+			speed=startSpeed;
+			espeed=enemyStartSpeed;
+			carCrashRecoverSpeed=0;
+			winCars=needXCarsToWin;
+			winFlag=0;
+			
+			
+			//Load Audio Assets
+			
+			var audio={};
+			var volume={};
+			
+			var ac=new AudioContext();
+			
+			const load=(u,c)=>{
+				let f=u+'.ogg';
+				let r=new XMLHttpRequest();
+				r.open('GET',f,true);
+				r.responseType='arraybuffer';
+				r.onload=()=>{
+					ac.decodeAudioData(
+						r.response,
+						(b)=>{
+							audio[u]=b;
+							c();
+						}
+					);
+				}
+				r.send();
+			}
+			
+			function motorSound(p){
+				if(audio['motor']){
+					audio['motor'].playbackRate.value=p;
+				}
+			}
+			load('motor',()=>{
+				let s=ac.createBufferSource();
+				let g=ac.createGain();
+				g.gain.value=1;
+				s.buffer=audio['motor'];
+				g.connect(ac.destination);
+				s.connect(g);
+				s.loop=true;
+				s.playbackRate.value=0;
+				if(enableAudio) s.start(0);
+				audio['motor']=s;
+				volume['motor']=g;
+			});
+			
+			load('snow',()=>{
+				let s=ac.createBufferSource();
+				let g=ac.createGain();
+				g.gain.value=1;
+				s.buffer=audio['snow'];
+				g.connect(ac.destination);
+				s.connect(g);
+				s.loop=true;
+				s.playbackRate.value=0;
+				if(enableAudio) s.start(0);
+				audio['snow']=s;
+				volume['snow']=g;
+			});
+			function snowSound(p){
+				if(audio['snow']){
+					audio['snow'].playbackRate.value=p;
+				}
+			}
+			
+			load('crash',()=>{});
+			function crashSound(){
+				if(audio['crash']){
+					if(enableAudio){
+						let s=ac.createBufferSource();
+						s.buffer=audio['crash'];
+						s.connect(ac.destination);
+						s.loop=true;
+						s.start(0);
+						setTimeout(()=>{
+							s.stop();
+						},1200);
+					}
+				}
+			}
+			function wallCrashSound(){
+				if(audio['crash']){
+					if(enableAudio){
+						let s=ac.createBufferSource();
+						s.buffer=audio['crash'];
+						s.connect(ac.destination);
+						s.loop=false;
+						s.start(0);
+						setTimeout(()=>{
+							s.stop();
+						},200);
+					}
+				}
+			}
+			function initSound(){
+				if(audio['crash']){
+					if(enableAudio){
+						let s=ac.createBufferSource();
+						s.buffer=audio['crash'];
+						s.connect(ac.destination);
+						s.loop=false;
+						s.start(0);
+						setTimeout(()=>{
+							s.stop();
+						},10);
+					}
+				}
+			}
+			
+			load('overtake',()=>{
+				let s=ac.createBufferSource();
+				let g=ac.createGain();
+				g.gain.value=0.4;
+				s.buffer=audio['overtake'];
+				g.connect(ac.destination);
+				s.connect(g);
+				s.loop=true;
+				s.playbackRate.value=0;
+				if(enableAudio) s.start(0);
+				audio['overtake']=s;
+				volume['overtake']=g;
+			});
+			function overtakeSound(){
+				if(audio['overtake']){
+					audio['overtake'].playbackRate.value=1;
+					setTimeout(()=>{
+						audio['overtake'].playbackRate.value=0;
+					},100);
+				}
+			}
+			
+			load('win',()=>{});
+			function winSound(){
+				if(audio['win']){
+					if(enableAudio){
+						let s=ac.createBufferSource();
+						s.buffer=audio['win'];
+						s.connect(ac.destination);
+						s.loop=false;
+						s.start(0);
+						setTimeout(()=>{
+							s.stop();
+						},2000);
+					}
+				}
+			}
+			
+			const _p=(t,a,b,c,d)=>a+(-a*3+t*(3*a-a*t))*t+(3*b+t*(-6*b+b*3*t))*t+(c*3-c*3*t)*(t*t)+d*((t*t)*t);
+			const _bez=(a,b,c,d,p)=>[parseInt(_p(p,a[0],b[0],c[0],d[0])),parseInt(_p(p,a[1],b[1],c[1],d[1]))];
+			const _fr=(p,c,r)=>{r.fillStyle=c;r.fillRect(p[0],p[1],p[2],p[3]);}
+			const _bin=(n)=>parseInt(n,16).toString(2);
+			const _hex=(n)=>parseInt(n,2).toString(16);
+			const _rnd=(a,b)=>Math.floor(Math.random()*(b-a+1)+a);
+			
+			_cg=document.getElementById('game');
+			var _g=_cg.getContext('2d');
+			var _id=_g.getImageData(0,0,152,104);
+			var buf=new ArrayBuffer(_id.data.length);
+			var buf8=new Uint8ClampedArray(buf);
+			var data=new Uint32Array(buf);
+			
+			var _cb=document.getElementById('bg');
+			var _b=_cb.getContext('2d');
+			var _cm=document.getElementById('mountain');
+			var _m=_cm.getContext('2d');
+			var _cs=document.getElementById('score');
+			var _s=_cs.getContext('2d');
+			var _ca=document.createElement('canvas');
+			var _a=_ca.getContext('2d');
+			
+			
+			
+			
+			//Score
+			_fr([0,0,152,55],'#000000',_s);
+			
+			// Score Table
+			
+			var _nmb=[
+				[
+					[0,1,1,1,1,0],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[0,1,1,1,1,0]
+				],
+				[
+					[0,0,1,1,0,0],
+					[0,1,1,1,0,0],
+					[0,0,1,1,0,0],
+					[0,0,1,1,0,0],
+					[0,0,1,1,0,0],
+					[0,0,1,1,0,0],
+					[0,1,1,1,1,0]
+				],
+				[
+					[0,1,1,1,1,0],
+					[1,0,0,0,1,1],
+					[0,0,0,0,1,1],
+					[0,1,1,1,1,0],
+					[1,1,0,0,0,0],
+					[1,1,0,0,0,0],
+					[1,1,1,1,1,1]
+				],
+				[
+					[0,1,1,1,1,0],
+					[1,0,0,0,1,1],
+					[0,0,0,1,1,0],
+					[0,0,0,1,1,0],
+					[0,0,0,0,0,1],
+					[1,0,0,0,0,1],
+					[0,1,1,1,1,0]
+				],
+				[
+					[0,0,0,1,1,0],
+					[0,0,1,1,1,0],
+					[0,1,0,1,1,0],
+					[1,0,0,1,1,0],
+					[1,1,1,1,1,1],
+					[0,0,0,1,1,0],
+					[0,0,0,1,1,0]
+				],
+				[
+					[1,1,1,1,1,1],
+					[1,1,0,0,0,0],
+					[1,1,0,0,0,0],
+					[1,1,1,1,1,0],
+					[0,0,0,0,1,1],
+					[1,0,0,0,1,1],
+					[1,1,1,1,1,0]
+				],
+				[
+					[0,1,1,1,1,0],
+					[1,1,0,0,0,1],
+					[1,1,0,0,0,0],
+					[1,1,1,1,1,0],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[0,1,1,1,1,0]
+				],
+				[
+					[1,1,1,1,1,1],
+					[1,0,0,0,0,1],
+					[0,0,0,0,1,1],
+					[0,0,0,1,1,0],
+					[0,0,1,1,0,0],
+					[0,0,1,1,0,0],
+					[0,0,1,1,0,0]
+				],
+				
+				[
+					[0,1,1,1,1,0],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[0,1,1,1,1,0],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[0,1,1,1,1,0]
+				],
+				[
+					[0,1,1,1,1,0],
+					[1,1,0,0,1,1],
+					[1,1,0,0,1,1],
+					[0,1,1,1,1,1],
+					[0,0,0,0,1,1],
+					[1,0,0,0,1,1],
+					[0,1,1,1,1,0]
+				],
+				[
+					[1,0,0,0,0,1],
+					[1,1,1,1,1,1],
+					[1,0,1,1,0,1],
+					[0,0,1,1,0,0],
+					[1,0,1,1,0,1],
+					[1,1,1,1,1,1],
+					[1,0,1,1,0,1]
+				],
+				[
+					[0,1,0,0,0,0],
+					[0,1,1,1,0,0],
+					[0,1,1,1,1,0],
+					[0,1,1,1,1,0],
+					[0,1,0,0,1,0],
+					[0,1,0,0,0,0],
+					[0,1,0,0,0,0]
+				],
+				[
+					[0,0,0,0,1,0],
+					[0,0,1,1,1,0],
+					[0,1,1,1,1,0],
+					[0,1,1,1,1,0],
+					[0,1,0,0,1,0],
+					[0,0,0,0,1,0],
+					[0,0,0,0,1,0]
+				],
+				[
+					[1,1,1,1,1,0],
+					[1,1,1,1,0,1],
+					[1,1,1,1,0,1],
+					[1,1,1,1,1,0],
+					[0,1,1,1,0,0],
+					[0,0,1,0,0,0],
+					[0,1,1,1,0,0]
+				]
+			];
+			
+			var _chars=[];
+			
+			
+			
+			for(var h=0;h<3;h++){
+				let d;
+				if(h==0){
+					d=(255<<24) | (0<<16) | (0<<8) | 0;
+				}else if(h==1){
+					d=(255<<24) | (57<<16) | (144<<8) | 202;
+				}else if(h==2){
+					d=(255<<24) | (94<<16) | (170<<8) | 85;
+				}
+				_chars[h]=[];
+				for(var i=0;i<_nmb.length;i++){
+					let c=document.createElement('canvas');
+					let ctx=c.getContext('2d');
+					let _id=ctx.getImageData(0,0,6,8);
+					let buf=new ArrayBuffer(_id.data.length);
+					let buf8=new Uint8ClampedArray(buf);
+					let data=new Uint32Array(buf);
+					for(var j=0;j<_nmb[0].length;j++){
+						for(var k=0;k<_nmb[0][0].length;k++){
+							if(_nmb[i][j][k]==1){
+								data[j*6+k]=d;
+							}
+						}
+					}
+					_id.data.set(buf8);
+					ctx.putImageData(_id,0,0);
+					_chars[h][i]=c;
+					//_s.drawImage(_chars[h][i],i*8,h*10);
+				}
+			}
+			
+			
+			var tsc=document.createElement('canvas');
+			var tscx=tsc.getContext('2d');
+			_fr([0,0,64,34],'#a51818',tscx);
+			
+			
+			var b_csc=document.createElement('canvas');
+			b_csc.height=9;
+			var b_sc=b_csc.getContext('2d');
+			
+			var y_csc=document.createElement('canvas');
+			y_csc.height=9;
+			var y_sc=y_csc.getContext('2d');
+			
+			
+			var bdg=0;
+			var bdgt=0;
+			
+			var ygt=[0,0,0,0];
+			var nant=[0,0,0,0];
+			
+			
+			setInterval(()=>{
+				winFlag=winFlag==0 ? 1 : 0;
+			},600);
+			
+			var ltchm=[0,0,0,0];
+			
+			const smain=()=>{
+				
+				_fr([8,3,48,9],'#c69239',tscx);
+				_fr([48,3,8,9],'#000000',tscx);
+				if(!win){
+					_fr([8,18,8,9],'#c69239',tscx);
+					_fr([24,18,32,9],'#c69239',tscx);
+				}else{
+					_fr([8,18,8,9],'#53ad5c',tscx);
+					_fr([24,18,32,9],'#000000',tscx);
+					_fr([28,26,1,1],'#53ad5c',tscx);
+					_fr([36,26,1,1],'#53ad5c',tscx);
+					_fr([44,26,1,1],'#53ad5c',tscx);
+					_fr([52,26,1,1],'#53ad5c',tscx);
+				}
+				let qspd;
+				if(!freeze){
+					qspd=speed/400;
+				}else{
+					qspd=0;
+				}
+				
+				
+				
+				y_sc.clearRect(0,0,32,9);
+				b_sc.clearRect(0,0,10,9);
+				var bx=bdg%10;
+				b_sc.drawImage(_chars[1][bx],0,bdgt+1);
+				b_sc.drawImage(_chars[1][(bx<9 ? bx+1 : 0)],0,bdgt-9);
+				
+				
+				
+				let ntchm=tachometer.toString().padStart(4,'0').split('');
+				
+				if(started) bdgt+=qspd;
+				if(bdgt>=9){
+					bdgt=0;
+					if(!freeze && started){
+						bdg++;
+						if(bx==9 && bdg>1){
+							tachometer++;
+						}
+					}
+				}
+				
+				for(var i=0;i<4;i++){
+					if(ltchm[i]!=ntchm[i]){
+						ygt[i]=8;
+						nant[i]=ltchm[i];
+						y_sc.drawImage(_chars[0][ltchm[i]],i*8,1);
+						y_sc.drawImage(_chars[0][ntchm[i]],i*8,-8);
+					}else{
+						if(ygt[i]>0){
+							ygt[i]-=0.5;
+							y_sc.drawImage(_chars[0][nant[i]],i*8,8-ygt[i]);
+							y_sc.drawImage(_chars[0][ntchm[i]],i*8,(-8+(8-ygt[i])));
+						}else{
+							y_sc.drawImage(_chars[0][ntchm[i]],i*8,1);
+						}
+					}
+				}
+				
+				ltchm=ntchm;
+				
+				tscx.drawImage(y_csc,17,3);
+				tscx.drawImage(b_csc,49,3);
+				
+				if(!win){
+					if(started){
+						tscx.drawImage(_chars[0][stage],9,19);
+						var cwi=winCars.toString().padStart(3,'0').split('');
+						tscx.drawImage(_chars[0][stage],9,19);
+						tscx.drawImage(_chars[0][10],25,19);
+						tscx.drawImage(_chars[0][cwi[0]],33,19);
+						tscx.drawImage(_chars[0][cwi[1]],41,19);
+						tscx.drawImage(_chars[0][cwi[2]],49,19);
+					}else{
+						tscx.drawImage(_chars[0][10],25,19);
+					}
+				}else{
+					let flp=winFlag==0 ? 11 : 12;
+					let flx=winFlag==0 ? 2 : -1;
+					tscx.drawImage(_chars[0][stage],9,19);
+					tscx.drawImage(_chars[0][stage],9,19);
+					tscx.drawImage(_chars[2][flp],25+flx,19);
+					tscx.drawImage(_chars[2][flp],33+flx,19);
+					tscx.drawImage(_chars[2][flp],41+flx,19);
+					tscx.drawImage(_chars[2][flp],49+flx,19);
+				}
+				
+				
+				_s.drawImage(tsc,44,6);
+				requestAnimationFrame(smain);
+			}
+			requestAnimationFrame(smain);
+			
+			
+			
+			//Mountains
+			var _dm=(a,d)=>{
+				let c=document.createElement('canvas');
+				let ctx=c.getContext('2d');
+				var y=0;
+				for(var i=6;i>=0;i--){
+					var l=_bin(a[i]).padStart(16,0).toString().split('');
+					for(var j=0;j<16;j++){
+						if(l[j]==1){
+							_fr([j*2,y,2,1],d,ctx);
+						}
+					}
+					y++;
+				}
+				return c;
+			}
+			_mnt=[
+				_dm(['ffff','7ffe','3ffc','1f98','0f00','0600'],'#897f19'),
+				_dm(['fffc','3ff8','07f0','0300','0','0'],'#897f19')
+			];
+			var drawMountain=(x)=>{
+				_m.clearRect(0,0,152,8);
+				_m.drawImage(_mnt[0],x,0);
+				_m.drawImage(_mnt[1],x+66,0);
+				if(x<0) _m.drawImage(_mnt[0],x+152,0);
+				if(x<-66) _m.drawImage(_mnt[1],x+218,0);
+				if(x>54) _m.drawImage(_mnt[1],x-86,0);
+				if(x>120) _m.drawImage(_mnt[0],x-152,0);
+			}
+			var changeMountainColor=(c)=>{
+				_mnt=[
+					_dm(['ffff','7ffe','3ffc','1f98','0f00','0600'],c),
+					_dm(['fffc','3ff8','07f0','0300','0','0'],c)
+				];
+			}
+			
+			var changeBackground=(l)=>{
+				let s,g,m;
+				switch(l){
+					case 0:
+						s='#3939a7';
+						g='#0f550a';
+						m='#6c7c00';
+						break;
+					case 1:
+						s='#2b39c0';
+						g='#0f550a';
+						m='#708228';
+						break;
+					case 2:
+						s='#2b39c0';
+						g='#0f550a';
+						m='#b4b4b4';
+						break;
+					case 3:
+						s='#4d4dbb';
+						g='#c8c8c8';
+						m='#b4b4b4';
+						break;
+					case 4:
+						s='#3939a7';
+						g='#1f5100';
+						m='#0f550a';
+						break;
+					case 5:
+						s=['#5429ad','#3939a7','#3939a7','#3939a7'];
+						g='#1f5100';
+						m='#0f550a';
+						break;
+					case 6:
+						s=['#711fa6','#5429ad','#3939a7','#3939a7'];
+						g='#1f5100';
+						m='#0f550a';
+						break;
+					case 7:
+						s=['#871c85','#711fa6','#5429ad','#3939a7'];
+						g='#1f5100';
+						m='#0f550a';
+						break;
+					case 8:
+						s=['#871c85','#711fa6','#5429ad','#3939a7'];
+						g='#1f5100';
+						m='#0f550a';
+						break;
+					case 9:
+						s=['#912640','#871c85','#711fa6','#5429ad'];
+						g='#1f5100';
+						m='#0f550a';
+						break;
+					case 10:
+						s=['#8f3918','#912640','#871c85','#711fa6'];
+						g='#344600';
+						m='#000000';
+						break;
+					case 11:
+						s=['#a34d2c','#8f3918','#912640','#871c85'];
+						g='#344600';
+						m='#000000';
+						break;
+					case 12:
+						s=['#8f6100','#a34d2c','#8f3918','#912640'];
+						g='#344600';
+						m='#000000';
+						break;
+					case 13:
+						s=['#6c7c00','#8f6100','#a34d2c','#8f3918'];
+						g='#344600';
+						m='#000000';
+						break;
+					case 14:
+						s='#505050';
+						g='#000000';
+						m='#787878';
+						break;
+					case 15:
+						s='#505050';
+						g='#505050';
+						m='#505050';
+						break;
+					case 16:
+						s='#505050';
+						g='#000000';
+						m='#787878';
+						break;
+					case 17:
+						s='#3939a7';
+						g='#000000';
+						m='#a34d2c';
+						break;
+					case 18:
+						s='#3939a7';
+						g='#000000';
+						m='#a34d2c';
+						break;
+					default:
+						s='#1722ae';
+						g='#0f550a';
+						m='#6c7c00';
+				}
+				if(typeof(s)=='string') s=[s,s,s,s];
+				_fr([0,49,152,2],s[0],_b);
+				_fr([0,47,152,2],s[1],_b);
+				_fr([0,45,152,2],s[2],_b);
+				_fr([0,0,152,45],s[3],_b);
+				_fr([0,51,152,104],g,_b);
+				changeMountainColor(m);
+				
+				if(l==3){
+					if(volume['snow']){
+						volume['snow'].gain.value=0.5;
+						volume['motor'].gain.value=0.6;
+					}
+					snowSound(1);
+				}else{
+					if(volume['snow']){
+						volume['snow'].gain.value=0;
+						volume['motor'].gain.value=1;
+					}
+					snowSound(0);
+				}
+				
+			}
+			changeBackground(background);
+			
+			// Track
+			
+			const _tc=['#505050','#646464','#787878','#a0a0a0'];
+			
+			
+			
+			var enemies=[
+				[[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1]],
+				[[0,enemySpace,0,0,1],[0,enemySpace,0,0,1],[0,enemySpace,0,0,1]],
+				[[0,enemySpace*2,0,0,1],[0,enemySpace*2,0,0,1],[0,enemySpace*2,0,0,1]],
+				[[0,enemySpace*3,0,0,1],[0,enemySpace*3,0,0,1],[0,enemySpace*3,0,0,1]],
+				[[0,enemySpace*4,0,0,1],[0,enemySpace*4,0,0,1],[0,enemySpace*4,0,0,1]],
+				[[0,enemySpace*5,0,0,1],[0,enemySpace*5,0,0,1],[0,enemySpace*5,0,0,1]]
+			];
+			
+			var enemyWinCount=[0,0,0,0,0,0];
+			
+			var si=0;
+			const drawTrack=(p,x)=>{
+				let pl=leftTrack;
+				let pr=rightTrack;
+				let l,r;
+				let sif=parseInt(si/5);
+				var siq;
+				
+				var cty=0;
+				if(background==14 || background==15 || background==16) cty=1;
+				
+				for(let i=0;i<=100;i++){
+					if(i<60){
+						c=80;
+					}else if(i<70){
+						c=100;
+					}else if(i<80){
+						c=120;
+					}else{
+						c=160;
+					}
+					
+					let d=(255<<24) | (c<<16) | (c<<8) | c;
+					
+					let d2=(255<<24) | (c<<16) | (c<<8) | 255;
+					
+					l=_bez([p,0],[p,0],[60,30],[pl,104],i/100);
+					r=_bez([p,0],[p,0],[92,30],[pr,104],i/100);
+					
+					
+					var eb=[
+						_bez([p,0],[p,0],[60,30],[pl+20,104],i/100),
+						_bez([p,0],[p,0],[76,30],[76,104],i/100),
+						_bez([p,0],[p,0],[92,30],[pr-20,104],i/100)
+					];
+					
+					
+					if(i==parseInt(si)) siq=1;
+					if(i>=parseInt(si)){
+						if(i<parseInt(si)+sif){
+							if(i<si+sif-4){
+								l[0]+=siq;
+								r[0]-=siq;
+								if(siq<parseInt(i/20)) siq++;
+							}else{
+								l[0]+=siq;
+								r[0]-=siq;
+								if(siq>0) siq--;
+							}
+						}
+					}
+					data[l[1]*152+l[0]+x]=d;
+					data[r[1]*152+r[0]+x]=d;
+					
+					for(let j=0;j<enemies.length;j++){
+						for(let k=0;k<enemies[0].length;k++){
+							let z=parseInt(i/d_car.length);
+							if(z>d_car.length-1) z=d_car.length-1;
+							if(parseInt(enemies[j][k][1])==i){
+								if(enemies[j][k][0]==1){
+									if(eb[k][1]>35 || background!=15){
+										drawCar(eb[k][0],eb[k][1],z,c_c[enemies[j][k][2]],trackPosition,cty);
+									}
+								}
+							}
+						}
+					}
+				}
+				if(started){
+					si+=speed/150;
+					if(si>100) si=0;
+				}
+			}
+			
+			var d_car=[
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,1,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,1,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,1,1,0,0,0],
+						[0,0,0,1,1,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,1,1,0,0,0],
+						[0,0,1,1,1,1,0,0],
+						[0,0,1,1,1,1,0,0],
+						[0,0,1,1,1,1,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,1,1,1,1,0,0],
+						[0,1,0,1,1,0,0,0],
+						[0,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,0],
+						[0,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,0],
+						[0,0,1,1,1,1,1,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,1,1,1,1,1,1,0],
+						[0,1,1,1,1,1,1,0],
+						[0,1,0,1,1,0,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,1,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,1,1,1,1,1,1,0],
+						[0,1,1,1,1,1,1,0],
+						[0,1,0,1,1,0,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,0,1,1,0,1,0]
+					],
+					[
+						[0,1,0,1,1,0,1,0],
+						[0,1,1,1,1,1,1,0],
+						[0,1,1,1,1,1,1,0],
+						[0,1,0,1,1,0,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,1,1,1,1,1,0],
+						[0,1,1,1,1,1,0,1],
+						[1,0,0,1,1,0,1,0]
+					]
+				];
+				
+			var d_car_l=[
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,1,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,1,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,1,0,1,0,0,0],
+						[0,0,1,0,1,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					],
+					[
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,1,1,0,0,1,1,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0],
+						[0,0,0,0,0,0,0,0]
+					]
+				];	
+				
+		
+			
+			// Car
+			
+			var c_c=[[62,127,189],[164,154,41],[64,146,124],[190,84,172],[107,78,207],[213,111,60],[96,148,66]];
+			
+			const drawCar=(x,y,z,c,w,t)=>{
+				var car=d_car[z];
+				let d=(255<<24) | (c[2]<<16) | (c[1]<<8) | c[0];
+				if(t==1){
+					d=(255<<24) | (165<<16) | (88<<8) | 195;
+					car=d_car_l[z];
+				}
+				for(var i=0;i<car.length;i++){
+					for(var j=0;j<car[0].length;j++){
+						if(car[i][j]==1){
+							data[(parseInt(y)+i-5)*152+(parseInt(x)-8+j*2)+w]=d;
+							data[(parseInt(y)+i-5)*152+(parseInt(x)-8+j*2+1)+w]=d;
+						}
+					}
+				}
+			}
+			
+			
+			
+			
+			
+			// Controls
+			
+			
+			
+			document.onkeydown=(e)=>{
+				var k=e.keyCode;
+				switch(k){
+					case 32: case 38: case 17: case 96: case 104: case 87:
+						key.throttle=true;
+						break;
+					case 40: case 98: case 83:
+						key.brake=true;
+						break;
+					case 37: case 65: case 100:
+						key.left=true;
+						break;
+					case 39: case 68: case 102:
+						key.right=true;
+						break;
+				}
+			}
+			document.onkeyup=(e)=>{
+				var k=e.keyCode;
+				switch(k){
+					case 32: case 38: case 17: case 96: case 104: case 87:
+						key.throttle=false;
+						break;
+					case 40: case 98: case 83:
+						key.brake=false;
+						break;
+					case 37: case 65: case 100:
+						key.left=false;
+						break;
+					case 39: case 68: case 102:
+						key.right=false;
+						break;
+				}
+			}
+			
+			
+			trackDirection=0;
+			
+			var chgb=()=>{
+				if(started){
+					background++;
+				}
+				changeBackground(background);
+				if(background>=5 && background<=13){
+					setTimeout(chgb,5000*timePasses);
+				}else{
+					setTimeout(chgb,30000*timePasses);
+				}
+				if(background>=19){
+					newStage();
+					background=0;
+				}
+			}
+			setTimeout(chgb,30000*timePasses);
+			
+			
+			changeBackground(background);
+			
+			
+			setInterval(()=>{
+				var tp=_rnd(-1,1);
+				trackDirection=tp;
+			},4000);
+			
+			var recalculateCarPosition=true;
+			var firstCarWave=true;
+			var dm=startMountainPosition;
+			
+			var _crash=()=>{
+				if(!crash && useCollision){
+					crashSound();
+					crash=true;
+					speed=0;
+					espeed=-carCrashSpeed;
+					if(carPosition<76){
+						carCrashRecoverSpeed=carCrashSpeedMovement;
+					}else{
+						carCrashRecoverSpeed=-carCrashSpeedMovement;
+					}
+					setTimeout(()=>{
+						crash=false;
+						speed=startSpeed;
+						espeed=enemyStartSpeed;
+						carCrashRecoverSpeed=0;
+					},crashTime);
+				}
+			}
+			
+			
+			// Win and new stage
+			
+			freeze=false;
+			var stageWin=()=>{
+				win=true;
+				winSound();
+				freeze=true;
+				volume['motor'].gain.value=0;
+				setTimeout(()=>{
+					freeze=false;
+					volume['motor'].gain.value=1;
+					requestAnimationFrame(main);
+				},2000);
+			}
+			
+			var newStage=()=>{
+				if(win){
+					stage++;
+					win=false;
+					needXCarsToWin=300;
+					enemyFrequency=50;
+					winCars=needXCarsToWin;
+					carCrashSpeed*=2;
+					if(carCrashSpeed==maxCarCrashSpeed) carCrashSpeed=maxCarCrashSpeed;
+					
+				}else{
+					freeze=true;
+				}
+			}
+			
+			
+			
+			const main=()=>{
+				if(started){
+					for(let i=0;i<enemies.length;i++){
+						for(let j=0;j<enemies[0].length;j++){
+							let espd=(espeed/200)-0.5;
+							enemies[i][j][1]+=espd;
+							if(espd>0){
+								if(enemies[i][j][1]>90){
+									if(enemies[i][j][0]==1){
+										if(enemyWinCount[i]<=0){
+											if(winCars>0){
+												winCars--;
+											}
+											if(winCars==0){
+												if(!win) stageWin();
+											}
+											enemyWinCount[i]=1;
+										}
+									}
+								}
+								if(enemies[i][j][1]>110){
+									enemies[i][0][1]=0;
+									enemies[i][1][1]=0;
+									enemies[i][2][1]=0;
+									enemies[i][0][0]=0;
+									enemies[i][1][0]=0;
+									enemies[i][2][0]=0;
+									let dsp=_rnd(0,100);
+									if(dsp<enemyFrequency){
+										let pos=_rnd(0,2);
+										enemies[i][pos][0]=1;
+										enemies[i][pos][3]=pos;
+									}
+									let cl=_rnd(0,c_c.length-1);
+									enemies[i][j][2]=cl;
+									enemyWinCount[i]=0;
+								}
+							}else{
+								if(enemies[i][j][1]<90){
+									if(enemies[i][j][0]==1){
+										if(enemyWinCount[i]>=0){
+											if(winCars<needXCarsToWin){
+												winCars++;
+											}
+											enemyWinCount[i]=-1;
+										}
+									}
+								}
+								if(enemies[i][j][1]<0){
+									enemies[i][0][0]=0;
+									enemies[i][1][0]=0;
+									enemies[i][2][0]=0;
+									if(carPosition<76){
+										enemies[i][0][3]=2;
+										enemies[i][1][3]=2;
+										enemies[i][2][3]=2;
+										enemies[i][2][0]=1;
+									}else{
+										enemies[i][0][3]=0;
+										enemies[i][1][3]=0;
+										enemies[i][2][3]=0;
+										enemies[i][0][0]=1;
+									}
+									let cl=_rnd(0,c_c.length-1);
+									enemies[i][j][2]=cl;
+									enemies[i][j][1]=110;
+									enemyWinCount[i]=0;
+								}
+							}
+							
+							// Collision
+							
+							if(enemies[i][j][0]==1){
+								if(enemies[i][j][1]>=90 && enemies[i][j][1]<=98){
+									if(enemies[i][j][3]==0){
+										if(carPosition<66){
+											_crash();
+										}else{
+											if(speed>200 || espeed<-9){
+												overtakeSound();
+											}
+										}
+									}else if(enemies[i][j][3]==1){
+										if(carPosition>62 && carPosition<88){
+											_crash();
+										}else{
+											if(speed>200 || espeed<-30){
+												overtakeSound();
+											}
+										}
+									}else if(enemies[i][j][3]==2){
+										if(carPosition>85){
+											_crash();
+										}else{
+											if(speed>200 || espeed<-30){
+												overtakeSound();
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					if(trackDirection==1){
+						if(trackCurve<126){
+							trackCurve+=trackCurveSpeed;
+						}
+					}else if(trackDirection==-1){
+						if(trackCurve>26){
+							trackCurve-=trackCurveSpeed;
+						}
+					}else if(trackDirection==0){
+						if(trackCurve>76){
+							trackCurve-=trackCurveSpeed;
+						}else if(trackCurve<76){
+							trackCurve+=trackCurveSpeed;
+						}
+					}
+					
+					
+					let l=26+trackPosition+16;
+					let r=126+trackPosition-16;
+					
+					
+					if(key.throttle){
+						if(!crash){
+							if(speed<=speedLimit){
+								speed+=throttle;
+								espeed+=throttle;
+							}else{
+								speed=speedLimit;
+								espeed=speedLimit;
+							}
+						}
+					}
+					var tspd=0.1+((carTurnSpeed/100)*(speed/4));
+					if(tspd>carTurnSpeed) tspd=carTurnSpeed;
+					if(key.left){
+						if(carPosition>l){
+							carPosition-=tspd;
+						}else{
+							carPosition+=carJump;
+							wallCrashSound();
+							speed-=wallCollisionPenalty;
+						}
+					}else if(key.right){
+						if(carPosition<r){
+							carPosition+=tspd;
+						}else{
+							carPosition-=carJump;
+							wallCrashSound();
+							speed-=wallCollisionPenalty;
+						}
+					}
+					
+					
+					if(key.brake){
+						if(speed>=startSpeed){
+							speed-=throttle*brakeFactor;
+							snowSound(1);
+						}else{
+							speed=startSpeed;
+						}
+						if(espeed>=enemyStartSpeed){
+							espeed-=throttle*brakeFactor;
+						}else{
+							espeed=enemyStartSpeed;
+						}
+					}else{
+						snowSound(0);
+					}
+					
+					
+					
+					
+					if(trackCurve>76){
+						mountainDirection=-(speed/100);
+					}else if(trackCurve<76){
+						mountainDirection=(speed/100);
+					}else{
+						mountainDirection=0;
+					}
+					drawMountain(dm);
+					dm+=mountainDirection;
+					if(dm<=-152 || dm>=152) dm=0;
+					_g.clearRect(0,0,152,104);
+					_id=_g.getImageData(0,0,152,104);
+					buf=new ArrayBuffer(_id.data.length);
+					buf8=new Uint8ClampedArray(buf);
+					data=new Uint32Array(buf);
+					trackPosition=-parseInt((parseInt(carPosition)-76)/4);
+					if(trackPosition<-20) trackPosition=-20;
+					if(trackPosition>20) trackPosition=20;
+					drawTrack(trackCurve,trackPosition);
+					carHeight=speed/25;
+					if(carHeight>5) carHeight=5;
+					if(!crash){
+						var vgf=(carGForce/100)*(speed/4);
+						if(trackCurve>76){
+							if(carPosition>l){
+								carPosition-=vgf;
+							}
+						}else if(trackCurve<76){
+							if(carPosition<r){
+								carPosition+=vgf;
+							}
+						}
+					}else{
+						if(carCrashRecoverSpeed>0){
+							if(carPosition<r){
+								carPosition+=carCrashRecoverSpeed;
+							}
+						}else if(carCrashRecoverSpeed<0){
+							if(carPosition>l){
+								carPosition+=carCrashRecoverSpeed;
+							}
+						}
+					}
+					drawCar(carPosition,95-carHeight,9,[170,170,170],0,0);
+					_id.data.set(buf8);
+					_g.putImageData(_id,0,0);
+					var motor=0.5+((speed/100)%1)/2;
+					motorSound(motor);
+					if(!freeze){
+						requestAnimationFrame(main);
+					}
+				}else{
+					drawMountain(dm);
+					drawTrack(trackCurve,trackPosition);
+					drawCar(carPosition,95-carHeight,9,[170,170,170],0,0);
+					_id.data.set(buf8);
+					_g.putImageData(_id,0,0);
+					if(key.throttle){
+						started=true;
+					}
+					requestAnimationFrame(main);
+				}
+			}
+			requestAnimationFrame(main);
+			
+			
+			
+			
+		</script>
+	</body>
+</html>
+
